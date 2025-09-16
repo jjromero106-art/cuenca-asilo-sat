@@ -192,6 +192,12 @@ function procesarPaginacion(periodo) {
   tipoPaginacion = periodo;
   paginaActual = 0;
   
+  // Para semanas, usar búsqueda rápida como días
+  if (periodo === 'semanas') {
+    procesarSemanas();
+    return;
+  }
+  
   const datos = new Map();
   
   datosConsultados.forEach(record => {
@@ -201,11 +207,6 @@ function procesarPaginacion(periodo) {
     switch(periodo) {
       case 'dias':
         clave = fecha.toISOString().split('T')[0];
-        break;
-      case 'semanas':
-        const semana = new Date(fecha);
-        semana.setDate(fecha.getDate() - fecha.getDay());
-        clave = semana.toISOString().split('T')[0];
         break;
       case 'meses':
         clave = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
@@ -223,7 +224,85 @@ function procesarPaginacion(periodo) {
   mostrarPagina();
 }
 
+// Función optimizada para procesar semanas (como días)
+async function procesarSemanas() {
+  const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
+  
+  // Obtener rango de fechas disponibles
+  try {
+    const response = await fetch(`${SERVER_URL}/api/data-info`);
+    const info = await response.json();
+    
+    if (!info.firstDate || !info.lastDate) {
+      $('#myPlot').html('<div style="text-align:center;padding:50px;">No se pudo obtener rango de fechas</div>');
+      return;
+    }
+    
+    const primeraFecha = new Date(info.firstDate);
+    const ultimaFecha = new Date(info.lastDate);
+    
+    // Generar semanas
+    const semanas = [];
+    let inicioSemana = new Date(primeraFecha);
+    inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay()); // Lunes
+    
+    while (inicioSemana <= ultimaFecha) {
+      const finSemana = new Date(inicioSemana);
+      finSemana.setDate(inicioSemana.getDate() + 6); // Domingo
+      
+      semanas.push({
+        inicio: inicioSemana.toISOString().split('T')[0],
+        fin: finSemana.toISOString().split('T')[0],
+        display: `Semana del ${inicioSemana.getDate()} al ${finSemana.getDate()} de ${finSemana.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`
+      });
+      
+      inicioSemana = new Date(finSemana);
+      inicioSemana.setDate(finSemana.getDate() + 1);
+    }
+    
+    // Cargar datos de cada semana usando API rápida
+    datosPaginados = [];
+    
+    for (let i = 0; i < semanas.length; i++) {
+      const semana = semanas[i];
+      
+      try {
+        const response = await fetch(`${SERVER_URL}/api/week-data?startDate=${semana.inicio}&endDate=${semana.fin}`);
+        if (response.ok) {
+          const weekData = await response.json();
+          const formattedData = weekData.map(record => ({
+            x: record.fechaa,
+            y: record.sensor1
+          }));
+          
+          datosPaginados.push({
+            data: formattedData,
+            title: semana.display,
+            count: formattedData.length
+          });
+        }
+      } catch (error) {
+        console.error('Error cargando semana:', error);
+      }
+      
+      // Mostrar progreso
+      $('#myPlot').html(`<div style="text-align:center;padding:50px;">Procesando semanas...<br>${i + 1} de ${semanas.length}</div>`);
+    }
+    
+    mostrarPaginaSemana();
+    
+  } catch (error) {
+    console.error('Error procesando semanas:', error);
+    $('#myPlot').html('<div style="text-align:center;padding:50px;color:red;">Error procesando semanas</div>');
+  }
+}
+
 function mostrarPagina() {
+  if (tipoPaginacion === 'semanas') {
+    mostrarPaginaSemana();
+    return;
+  }
+  
   if (!datosPaginados || datosPaginados.length === 0) return;
   
   const datosActuales = datosPaginados[paginaActual] || [];
@@ -247,6 +326,36 @@ function mostrarPagina() {
   }, { responsive: true, displayModeBar: false });
   
   $('#paginaInfo').text(`Página ${paginaActual + 1} de ${datosPaginados.length}`);
+  
+  $('button[onclick="anteriorPagina()"]').prop('disabled', paginaActual === 0);
+  $('button[onclick="siguientePagina()"]').prop('disabled', paginaActual >= datosPaginados.length - 1);
+}
+
+function mostrarPaginaSemana() {
+  if (!datosPaginados || datosPaginados.length === 0) return;
+  
+  const semanaActual = datosPaginados[paginaActual];
+  if (!semanaActual) return;
+  
+  Plotly.purge('myPlot');
+  
+  Plotly.newPlot('myPlot', [{
+    x: semanaActual.data.map(d => d.x),
+    y: semanaActual.data.map(d => d.y),
+    type: 'scattergl',
+    mode: 'lines+markers',
+    marker: { size: 2 },
+    name: 'Sensor 1',
+    hovertemplate: '%{x|%d/%m/%Y, %I:%M:%S %p}<br>%{y} mm<extra></extra>'
+  }], {
+    title: `${semanaActual.title} (${semanaActual.count} registros)`,
+    xaxis: { title: 'Fecha' },
+    yaxis: { title: 'Valores (mm)' },
+    autosize: true,
+    margin: { l: 50, r: 20, t: 50, b: 50 }
+  }, { responsive: true, displayModeBar: false });
+  
+  $('#paginaInfo').text(`${semanaActual.title} (${paginaActual + 1}/${datosPaginados.length})`);
   
   $('button[onclick="anteriorPagina()"]').prop('disabled', paginaActual === 0);
   $('button[onclick="siguientePagina()"]').prop('disabled', paginaActual >= datosPaginados.length - 1);
