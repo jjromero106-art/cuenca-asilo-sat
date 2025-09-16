@@ -53,14 +53,22 @@ async function loadDayData(inicio, fin) {
   const allData = [];
   const limit = 1000;
   let offset = 0;
+  let totalProcessed = 0;
+  const maxRecords = 100000; // Límite para evitar bucle infinito
   
-  while (true) {
+  while (totalProcessed < maxRecords) {
     try {
       const response = await fetch(`${SERVER_URL}/api/latest-data?limit=${limit}&offset=${offset}`);
-      if (!response.ok) break;
+      if (!response.ok) {
+        console.log('Response not OK:', response.status);
+        break;
+      }
       
       const chunk = await response.json();
-      if (chunk.length === 0) break;
+      if (chunk.length === 0) {
+        console.log('No more data available');
+        break;
+      }
       
       // Filtrar datos del día
       chunk.forEach(record => {
@@ -70,18 +78,27 @@ async function loadDayData(inicio, fin) {
         }
       });
       
+      totalProcessed += chunk.length;
       offset += chunk.length;
       
       // Mostrar progreso
-      $('#myPlot').html(`<div style="text-align:center;padding:50px;">Buscando datos del día...<br>${allData.length} registros encontrados</div>`);
+      $('#myPlot').html(`<div style="text-align:center;padding:50px;">Buscando datos del día...<br><strong>${allData.length}</strong> registros encontrados<br><small>Procesados: ${totalProcessed.toLocaleString()}</small></div>`);
       
-      if (chunk.length < limit) break;
+      // Salir si el chunk es menor al límite (no hay más datos)
+      if (chunk.length < limit) {
+        console.log('Last chunk received, ending search');
+        break;
+      }
+      
+      // Pausa pequeña para no bloquear UI
+      await new Promise(resolve => setTimeout(resolve, 50));
       
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error loading day data:', error);
       break;
     }
   }
   
+  console.log(`Búsqueda completada. Encontrados: ${allData.length} registros del día`);
   return allData;
 }
