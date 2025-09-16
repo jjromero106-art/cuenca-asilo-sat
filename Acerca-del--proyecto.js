@@ -587,6 +587,31 @@ function mostrarPagina() {
     autosize: true,
     margin: { l: 50, r: 20, t: 50, b: 50 }
   }, { responsive: true, displayModeBar: false });
+  
+  // Mostrar información específica del período
+  let infoTexto = '';
+  if (datosPaginados.length > 0 && datosPaginados[paginaActual].length > 0) {
+    const fechaEjemplo = new Date(datosPaginados[paginaActual][0].x);
+    
+    switch(tipoPaginacion) {
+      case 'dias':
+        infoTexto = fechaEjemplo.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        break;
+      case 'meses':
+        infoTexto = fechaEjemplo.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' });
+        break;
+      case 'años':
+        infoTexto = fechaEjemplo.getFullYear().toString();
+        break;
+    }
+  }
+  
+  $('#paginaInfo').text(`${infoTexto} (${paginaActual + 1}/${datosPaginados.length})`);
+  
+  // Actualizar estado de botones
+  $('button[onclick="anteriorPagina()"]').prop('disabled', paginaActual === 0);
+  $('button[onclick="siguientePagina()"]').prop('disabled', paginaActual >= datosPaginados.length - 1);
+}
 
 function mostrarPaginaSemana() {
   if (!datosPaginados || datosPaginados.length === 0) return;
@@ -612,6 +637,13 @@ function mostrarPaginaSemana() {
     autosize: true,
     margin: { l: 50, r: 20, t: 50, b: 50 }
   }, { responsive: true, displayModeBar: false });
+  
+  $('#paginaInfo').text(`${semanaActual.title} (${paginaActual + 1}/${datosPaginados.length})`);
+  
+  // Actualizar estado de botones
+  $('button[onclick="anteriorPagina()"]').prop('disabled', paginaActual === 0);
+  $('button[onclick="siguientePagina()"]').prop('disabled', paginaActual >= datosPaginados.length - 1);
+}
   
   // Mostrar información específica del período
   let infoTexto = '';
