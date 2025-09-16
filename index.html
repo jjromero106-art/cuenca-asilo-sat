@@ -15,8 +15,9 @@ technique, ​Forest wildlifeand hunting, ​Caring for forest to benefit nature
     <link id="u-page-google-font" rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i|Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i|Montserrat:100,100i,200,200i,300,300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i">
     
     <style>
-      /* Centrar símbolos en todas las resoluciones */
-      .u-group-elements {
+      /* Centrar solo los símbolos específicos */
+      .u-section-1 .u-group-elements,
+      .u-section-3 .u-group-elements {
         display: flex !important;
         flex-direction: column !important;
         justify-content: center !important;
@@ -61,10 +62,11 @@ technique, ​Forest wildlifeand hunting, ​Caring for forest to benefit nature
           max-height: 300px !important;
         }
         
-        .u-group-elements-1 {
-          width: 80px !important;
-          height: 80px !important;
-          margin: 0 auto !important;
+        /* Símbolo superior - más grande y centrado */
+        .u-section-1 .u-group-elements-1 {
+          width: 120px !important;
+          height: 120px !important;
+          margin: 20px auto !important;
           display: flex !important;
           flex-direction: column !important;
           justify-content: center !important;
@@ -72,19 +74,64 @@ technique, ​Forest wildlifeand hunting, ​Caring for forest to benefit nature
           position: relative !important;
         }
         
-        .u-shape-1 {
-          width: 80px !important;
-          height: 80px !important;
+        .u-section-1 .u-shape-1 {
+          width: 120px !important;
+          height: 120px !important;
           margin: 0 auto !important;
         }
         
-        .u-image-1 {
+        .u-section-1 .u-image-1 {
           position: absolute !important;
           top: 50% !important;
           left: 50% !important;
           transform: translate(-50%, -50%) !important;
           z-index: 2 !important;
           margin: 0 !important;
+          width: 60px !important;
+          height: 60px !important;
+        }
+        
+        /* Símbolo del proyecto - más grande y centrado */
+        .u-section-3 .u-group-elements-1 {
+          width: 100px !important;
+          height: 100px !important;
+          margin: 15px auto !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
+          align-items: center !important;
+          position: relative !important;
+        }
+        
+        .u-section-3 .u-shape-1 {
+          width: 100px !important;
+          height: 100px !important;
+          margin: 0 auto !important;
+        }
+        
+        .u-section-3 .u-image-1 {
+          position: absolute !important;
+          top: 50% !important;
+          left: 50% !important;
+          transform: translate(-50%, -50%) !important;
+          z-index: 2 !important;
+          margin: 0 !important;
+          width: 50px !important;
+          height: 50px !important;
+        }
+        
+        /* Centrar texto del proyecto */
+        .u-section-3 .u-layout-cell-1 {
+          text-align: center !important;
+        }
+        
+        /* NO mover otras imágenes */
+        .u-section-4 .u-image-1,
+        .u-section-4 .u-image-2 {
+          position: static !important;
+          transform: none !important;
+          width: auto !important;
+          height: auto !important;
         }
         
         .u-align-center .u-group-elements-1 {
@@ -135,14 +182,25 @@ technique, ​Forest wildlifeand hunting, ​Caring for forest to benefit nature
           margin: 0 !important;
         }
         
-        .u-group-elements-1 {
-          width: 60px !important;
-          height: 60px !important;
+        /* Símbolos en móviles pequeños */
+        .u-section-1 .u-group-elements-1 {
+          width: 90px !important;
+          height: 90px !important;
         }
         
-        .u-shape-1 {
-          width: 60px !important;
-          height: 60px !important;
+        .u-section-1 .u-shape-1 {
+          width: 90px !important;
+          height: 90px !important;
+        }
+        
+        .u-section-3 .u-group-elements-1 {
+          width: 80px !important;
+          height: 80px !important;
+        }
+        
+        .u-section-3 .u-shape-1 {
+          width: 80px !important;
+          height: 80px !important;
         }
       }
     </style>
