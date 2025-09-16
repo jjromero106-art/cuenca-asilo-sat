@@ -48,10 +48,13 @@ function consultarDiaEspecifico() {
       Plotly.newPlot('myPlot', traces, {
         title: `Datos del ${inicio.toLocaleDateString('es-ES')} (${sensor1Data.length} registros)`,
         xaxis: { title: 'Hora' },
-        yaxis: { title: 'Nivel (mm)' },
+        yaxis: { 
+          title: 'Nivel de Agua (mm)',
+          ticksuffix: ' mm'
+        },
         autosize: true,
-        margin: { l: 50, r: 20, t: 50, b: 50 }
-      }, { responsive: true, displayModeBar: false });
+        margin: { l: 60, r: 20, t: 50, b: 50 }
+      }, { responsive: true, displayModeBar: true });
       
     }).catch(error => {
       console.error('Error:', error);

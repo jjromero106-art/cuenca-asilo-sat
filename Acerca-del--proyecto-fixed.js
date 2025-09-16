@@ -42,10 +42,13 @@ function consultarDatos() {
       Plotly.newPlot('myPlot', traces, {
         title: 'Vista General Optimizada - Historial Completo',
         xaxis: { title: 'Fecha' },
-        yaxis: { title: 'Valores (mm)' },
+        yaxis: { 
+          title: 'Nivel de Agua (mm)',
+          ticksuffix: ' mm'
+        },
         autosize: true,
-        margin: { l: 50, r: 20, t: 50, b: 50 }
-      }, { responsive: true, displayModeBar: false });
+        margin: { l: 60, r: 20, t: 50, b: 50 }
+      }, { responsive: true, displayModeBar: true });
       
       $('#paginacionControles').show();
       
@@ -500,10 +503,13 @@ function mostrarPagina() {
   }], {
     title: `${tipoPaginacion.charAt(0).toUpperCase() + tipoPaginacion.slice(1)} - Página ${paginaActual + 1}`,
     xaxis: { title: 'Fecha' },
-    yaxis: { title: 'Valores (mm)' },
+    yaxis: { 
+      title: 'Nivel de Agua (mm)',
+      ticksuffix: ' mm'
+    },
     autosize: true,
-    margin: { l: 50, r: 20, t: 50, b: 50 }
-  }, { responsive: true, displayModeBar: false });
+    margin: { l: 60, r: 20, t: 50, b: 50 }
+  }, { responsive: true, displayModeBar: true });
   
   $('#paginaInfo').text(`Página ${paginaActual + 1} de ${datosPaginados.length}`);
   
@@ -536,10 +542,13 @@ async function mostrarPaginaSemana() {
   }], {
     title: `${semanaActual.display} (${semanaActual.count} registros)`,
     xaxis: { title: 'Fecha' },
-    yaxis: { title: 'Valores (mm)' },
+    yaxis: { 
+      title: 'Nivel de Agua (mm)',
+      ticksuffix: ' mm'
+    },
     autosize: true,
-    margin: { l: 50, r: 20, t: 50, b: 50 }
-  }, { responsive: true, displayModeBar: false });
+    margin: { l: 60, r: 20, t: 50, b: 50 }
+  }, { responsive: true, displayModeBar: true });
   
   $('#paginaInfo').text(`${semanaActual.display} (${paginaActual + 1}/${datosPaginados.length})`);
   
@@ -572,10 +581,13 @@ async function mostrarPaginaMes() {
   }], {
     title: `${mesActual.display} (${mesActual.count} registros - resolución reducida)`,
     xaxis: { title: 'Fecha' },
-    yaxis: { title: 'Valores (mm)' },
+    yaxis: { 
+      title: 'Nivel de Agua (mm)',
+      ticksuffix: ' mm'
+    },
     autosize: true,
-    margin: { l: 50, r: 20, t: 50, b: 50 }
-  }, { responsive: true, displayModeBar: false });
+    margin: { l: 60, r: 20, t: 50, b: 50 }
+  }, { responsive: true, displayModeBar: true });
   
   $('#paginaInfo').text(`${mesActual.display} (${paginaActual + 1}/${datosPaginados.length})`);
   
@@ -608,10 +620,13 @@ async function mostrarPaginaAno() {
   }], {
     title: `Año ${anoActual.display} (${anoActual.count} registros - resolución muy reducida)`,
     xaxis: { title: 'Fecha' },
-    yaxis: { title: 'Valores (mm)' },
+    yaxis: { 
+      title: 'Nivel de Agua (mm)',
+      ticksuffix: ' mm'
+    },
     autosize: true,
-    margin: { l: 50, r: 20, t: 50, b: 50 }
-  }, { responsive: true, displayModeBar: false });
+    margin: { l: 60, r: 20, t: 50, b: 50 }
+  }, { responsive: true, displayModeBar: true });
   
   $('#paginaInfo').text(`Año ${anoActual.display} (${paginaActual + 1}/${datosPaginados.length})`);
   
