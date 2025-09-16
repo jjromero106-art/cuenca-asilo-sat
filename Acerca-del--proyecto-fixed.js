@@ -203,6 +203,11 @@ function procesarPaginacion(periodo) {
     return;
   }
   
+  if (periodo === 'años') {
+    procesarAnos();
+    return;
+  }
+  
   const datos = new Map();
   
   datosConsultados.forEach(record => {
@@ -362,6 +367,48 @@ async function cargarSemana(indice) {
   }
 }
 
+// Función optimizada para procesar años
+async function procesarAnos() {
+  const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
+  
+  try {
+    const response = await fetch(`${SERVER_URL}/api/data-info`);
+    const info = await response.json();
+    
+    if (!info.firstDate || !info.lastDate) {
+      $('#myPlot').html('<div style="text-align:center;padding:50px;">No se pudo obtener rango de fechas</div>');
+      return;
+    }
+    
+    const primeraFecha = new Date(info.firstDate);
+    const ultimaFecha = new Date(info.lastDate);
+    
+    // Generar TODOS los años pero sin datos
+    const anos = [];
+    for (let year = primeraFecha.getFullYear(); year <= ultimaFecha.getFullYear(); year++) {
+      anos.push({
+        year: year,
+        display: year.toString(),
+        loaded: false,
+        data: [],
+        count: 0
+      });
+    }
+    
+    datosPaginados = anos;
+    
+    // Cargar SOLO el primer año
+    $('#myPlot').html('<div style="text-align:center;padding:50px;">Cargando primer año...</div>');
+    await cargarAno(0);
+    
+    mostrarPaginaAno();
+    
+  } catch (error) {
+    console.error('Error procesando años:', error);
+    $('#myPlot').html('<div style="text-align:center;padding:50px;color:red;">Error procesando años</div>');
+  }
+}
+
 // Función para cargar un mes específico
 async function cargarMes(indice) {
   if (!datosPaginados[indice] || datosPaginados[indice].loaded) {
@@ -391,6 +438,35 @@ async function cargarMes(indice) {
   }
 }
 
+// Función para cargar un año específico
+async function cargarAno(indice) {
+  if (!datosPaginados[indice] || datosPaginados[indice].loaded) {
+    return;
+  }
+  
+  const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
+  const ano = datosPaginados[indice];
+  
+  try {
+    const response = await fetch(`${SERVER_URL}/api/year-data?year=${ano.year}`);
+    if (response.ok) {
+      const yearData = await response.json();
+      const formattedData = yearData.map(record => ({
+        x: record.fechaa,
+        y: record.sensor1
+      }));
+      
+      datosPaginados[indice].data = formattedData;
+      datosPaginados[indice].count = formattedData.length;
+      datosPaginados[indice].loaded = true;
+      
+      console.log(`Año ${indice + 1} cargado: ${formattedData.length} registros (resolución muy reducida)`);
+    }
+  } catch (error) {
+    console.error(`Error cargando año ${indice}:`, error);
+  }
+}
+
 function mostrarPagina() {
   if (tipoPaginacion === 'semanas') {
     mostrarPaginaSemana();
@@ -399,6 +475,11 @@ function mostrarPagina() {
   
   if (tipoPaginacion === 'meses') {
     mostrarPaginaMes();
+    return;
+  }
+  
+  if (tipoPaginacion === 'años') {
+    mostrarPaginaAno();
     return;
   }
   
@@ -497,6 +578,42 @@ async function mostrarPaginaMes() {
   }, { responsive: true, displayModeBar: false });
   
   $('#paginaInfo').text(`${mesActual.display} (${paginaActual + 1}/${datosPaginados.length})`);
+  
+  $('button[onclick="anteriorPagina()"]').prop('disabled', paginaActual === 0);
+  $('button[onclick="siguientePagina()"]').prop('disabled', paginaActual >= datosPaginados.length - 1);
+}
+
+async function mostrarPaginaAno() {
+  if (!datosPaginados || datosPaginados.length === 0) return;
+  
+  const anoActual = datosPaginados[paginaActual];
+  if (!anoActual) return;
+  
+  // Si el año no está cargado, cargarlo
+  if (!anoActual.loaded) {
+    $('#myPlot').html(`<div style="text-align:center;padding:50px;">Cargando año ${anoActual.display}...</div>`);
+    await cargarAno(paginaActual);
+  }
+  
+  Plotly.purge('myPlot');
+  
+  Plotly.newPlot('myPlot', [{
+    x: anoActual.data.map(d => d.x),
+    y: anoActual.data.map(d => d.y),
+    type: 'scattergl',
+    mode: 'lines+markers',
+    marker: { size: 2 },
+    name: 'Sensor 1',
+    hovertemplate: '%{x|%d/%m/%Y, %I:%M:%S %p}<br>%{y} mm<extra></extra>'
+  }], {
+    title: `Año ${anoActual.display} (${anoActual.count} registros - resolución muy reducida)`,
+    xaxis: { title: 'Fecha' },
+    yaxis: { title: 'Valores (mm)' },
+    autosize: true,
+    margin: { l: 50, r: 20, t: 50, b: 50 }
+  }, { responsive: true, displayModeBar: false });
+  
+  $('#paginaInfo').text(`Año ${anoActual.display} (${paginaActual + 1}/${datosPaginados.length})`);
   
   $('button[onclick="anteriorPagina()"]').prop('disabled', paginaActual === 0);
   $('button[onclick="siguientePagina()"]').prop('disabled', paginaActual >= datosPaginados.length - 1);
