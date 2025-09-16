@@ -1,98 +1,85 @@
 function consultarDatos() {
-  const fechaInicio = $('#startdate').val();
-  const fechaFin = $('#enddate').val();
+  $('#myPlot').html('<div style="text-align:center;padding:50px;">Cargando vista general optimizada...</div>');
   
-  if (!fechaInicio || !fechaFin) {
-    alert('Por favor selecciona ambas fechas');
-    return;
-  }
-  
-  $('#myPlot').html('<div style="text-align:center;padding:50px;">Cargando datos...</div>');
-  
-  const inicio = new Date(fechaInicio.split('/').reverse().join('-'));
-  const fin = new Date(fechaFin.split('/').reverse().join('-'));
-  fin.setHours(23, 59, 59, 999); // Incluir todo el día
-  
-  // Liberar memoria anterior y deshabilitar controles
+  // Liberar memoria anterior
   datosConsultados = null;
   datosPaginados = null;
-  $('#paginacionControles').hide();
   
   const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
   
   setTimeout(() => {
-    // Cargar TODOS los datos RÁPIDO con requests paralelos
-    const loadAllData = async () => {
-      const allData = [];
-      const limit = 1000; // Chunks optimizados para 512MB
-      const maxParallel = 2; // Menos requests para ahorrar memoria
+    // Cargar datos con SALTOS para optimizar memoria
+    const loadSampledData = async () => {
+      const sampledData = [];
+      const limit = 500;
       let offset = 0;
-      let totalLoaded = 0;
-      let hasMoreData = true;
+      let totalRecords = 0;
+      let skipFactor = 1;
       
-      while (hasMoreData) {
-        // Crear múltiples requests paralelos
-        const promises = [];
-        for (let i = 0; i < maxParallel && hasMoreData; i++) {
-          const currentOffset = offset + (i * limit);
-          promises.push(
-            fetch(`${SERVER_URL}/api/latest-data?limit=${limit}&offset=${currentOffset}`)
-              .then(response => response.ok ? response.json() : [])
-              .catch(() => [])
-          );
-        }
+      // Primer request para estimar total
+      try {
+        const firstResponse = await fetch(`${SERVER_URL}/api/data-info`);
+        const info = await firstResponse.json();
+        totalRecords = info.total || 10000;
         
-        // Esperar todos los requests paralelos
-        const chunks = await Promise.all(promises);
+        // Calcular factor de salto basado en total de registros
+        if (totalRecords > 50000) skipFactor = 20;
+        else if (totalRecords > 20000) skipFactor = 10;
+        else if (totalRecords > 10000) skipFactor = 5;
+        else skipFactor = 2;
         
-        let loadedInThisBatch = 0;
-        chunks.forEach(chunk => {
-          if (chunk.length > 0) {
-            allData.push(...chunk);
-            loadedInThisBatch += chunk.length;
+        console.log(`📊 Total estimado: ${totalRecords}, Factor de salto: ${skipFactor}`);
+      } catch (error) {
+        console.error('Error obteniendo info:', error);
+      }
+      
+      while (offset < totalRecords) {
+        try {
+          const response = await fetch(`${SERVER_URL}/api/latest-data?limit=${limit}&offset=${offset}`);
+          if (!response.ok) break;
+          
+          const chunk = await response.json();
+          if (chunk.length === 0) break;
+          
+          // Tomar solo algunos registros del chunk (saltos)
+          for (let i = 0; i < chunk.length; i += skipFactor) {
+            sampledData.push(chunk[i]);
           }
-        });
-        
-        totalLoaded += loadedInThisBatch;
-        offset += maxParallel * limit;
-        
-        // Mostrar progreso
-        $('#myPlot').html(`<div style="text-align:center;padding:50px;">🚀 Carga rápida...<br><strong>${totalLoaded.toLocaleString()}</strong> registros<br><small>Cargando ${maxParallel} chunks simultáneos</small></div>`);
-        
-        // Si algún chunk vino vacío o incompleto, ya no hay más datos
-        hasMoreData = chunks.every(chunk => chunk.length === limit);
-        
-        // Pausa para liberar memoria
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        // Forzar limpieza de memoria cada 10 lotes
-        if (offset % 10000 === 0 && window.gc) {
-          window.gc();
+          
+          offset += limit * skipFactor;
+          
+          // Mostrar progreso
+          $('#myPlot').html(`<div style="text-align:center;padding:50px;">📈 Generando vista optimizada...<br><strong>${sampledData.length.toLocaleString()}</strong> puntos de datos<br><small>Saltando cada ${skipFactor} registros</small></div>`);
+          
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          if (chunk.length < limit) break;
+          
+        } catch (error) {
+          console.error('Error cargando chunk:', error);
+          break;
         }
       }
       
-      console.log(`✅ Total cargado rápidamente: ${allData.length} registros`);
-      return allData;
+      console.log(`✅ Vista optimizada: ${sampledData.length} de ${totalRecords} registros`);
+      return sampledData;
     };
     
-    loadAllData().then(data => {
+    loadSampledData().then(data => {
       const sensor1Data = [];
       const sensor2Data = [];
       const sensor3Data = [];
       
-      console.log(`Total datos cargados: ${data.length}`);
-      console.log(`Rango: ${inicio.toISOString()} a ${fin.toISOString()}`);
+      console.log(`Datos optimizados cargados: ${data.length}`);
       
+      // Sin filtro de fechas - mostrar todos los datos muestreados
       data.forEach(record => {
-        const fecha = new Date(record.fechaa);
-        if (fecha >= inicio && fecha <= fin) {
-          sensor1Data.push({ x: record.fechaa, y: record.sensor1 });
-          if (record.sensor2) sensor2Data.push({ x: record.fechaa, y: record.sensor2 });
-          if (record.sensor3) sensor3Data.push({ x: record.fechaa, y: record.sensor3 });
-        }
+        sensor1Data.push({ x: record.fechaa, y: record.sensor1 });
+        if (record.sensor2) sensor2Data.push({ x: record.fechaa, y: record.sensor2 });
+        if (record.sensor3) sensor3Data.push({ x: record.fechaa, y: record.sensor3 });
       });
       
-      console.log(`Datos en rango: ${sensor1Data.length}`);
+      console.log(`Puntos en gráfica: ${sensor1Data.length}`);
         
         if (sensor1Data.length === 0) {
           $('#myPlot').html('<div style="text-align:center;padding:50px;">No hay datos</div>');
