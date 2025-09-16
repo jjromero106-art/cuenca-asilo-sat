@@ -11,6 +11,7 @@ function consultarDatos() {
   
   const inicio = new Date(fechaInicio.split('/').reverse().join('-'));
   const fin = new Date(fechaFin.split('/').reverse().join('-'));
+  fin.setHours(23, 59, 59, 999); // Incluir todo el día
   
   // Liberar memoria anterior y deshabilitar controles
   datosConsultados = null;
@@ -23,8 +24,8 @@ function consultarDatos() {
     // Cargar TODOS los datos RÁPIDO con requests paralelos
     const loadAllData = async () => {
       const allData = [];
-      const limit = 2000; // Chunks más grandes
-      const maxParallel = 3; // Máximo 3 requests simultáneos
+      const limit = 5000; // Chunks muy grandes
+      const maxParallel = 4; // Más requests simultáneos
       let offset = 0;
       let totalLoaded = 0;
       let hasMoreData = true;
@@ -74,6 +75,9 @@ function consultarDatos() {
       const sensor2Data = [];
       const sensor3Data = [];
       
+      console.log(`Total datos cargados: ${data.length}`);
+      console.log(`Rango: ${inicio.toISOString()} a ${fin.toISOString()}`);
+      
       data.forEach(record => {
         const fecha = new Date(record.fechaa);
         if (fecha >= inicio && fecha <= fin) {
@@ -82,6 +86,8 @@ function consultarDatos() {
           if (record.sensor3) sensor3Data.push({ x: record.fechaa, y: record.sensor3 });
         }
       });
+      
+      console.log(`Datos en rango: ${sensor1Data.length}`);
         
         if (sensor1Data.length === 0) {
           $('#myPlot').html('<div style="text-align:center;padding:50px;">No hay datos</div>');
