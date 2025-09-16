@@ -1,4 +1,5 @@
 function consultarDatos() {
+  console.log('Iniciando consultarDatos...');
   $('#myPlot').html('<div style="text-align:center;padding:50px;">Cargando vista general optimizada...</div>');
   
   // Liberar memoria anterior
@@ -20,9 +21,11 @@ function consultarDatos() {
       
       // Primer request para estimar total
       try {
+        console.log('Obteniendo info de datos desde:', `${SERVER_URL}/api/data-info`);
         const firstResponse = await fetch(`${SERVER_URL}/api/data-info`);
         const info = await firstResponse.json();
         totalRecords = info.total || 10000;
+        console.log('Total de registros:', totalRecords);
         
         // Calcular factor de salto para millones de registros
         if (totalRecords > 1000000) skipFactor = 500;      // 1M+ → cada 500
@@ -281,6 +284,8 @@ function consultarDatosOriginal() {
 function actualizarDatosEnTiempoReal() {
   const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
   
+  console.log('Actualizando datos en tiempo real...');
+  
   fetch(`${SERVER_URL}/api/last-record`)
     .then(response => {
       if (!response.ok) throw new Error('Error en la API');
@@ -296,6 +301,8 @@ function actualizarDatosEnTiempoReal() {
       $('#NivelAguaUltrasonico').text(ultimoDato.sensor1 + ' mm');
       $('#datestring').text(fechaStr);
       $('#timestring').text(horaStr);
+      
+      console.log('Datos actualizados:', ultimoDato.sensor1 + ' mm', fechaStr);
     })
     .catch(error => {
       console.error('Error actualizando datos:', error);
