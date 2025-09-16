@@ -137,7 +137,7 @@ function consultarDatos() {
         Plotly.purge('myPlot');
         
         Plotly.newPlot('myPlot', traces, {
-          title: 'Historial de Datos - Múltiples Sensores',
+          title: 'Vista General Optimizada - Historial Completo',
           xaxis: { title: 'Fecha' },
           yaxis: { title: 'Valores (mm)' },
           autosize: true,
