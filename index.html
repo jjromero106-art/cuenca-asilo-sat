@@ -18,9 +18,11 @@ technique, ​Forest wildlifeand hunting, ​Caring for forest to benefit nature
       /* Centrar símbolos en todas las resoluciones */
       .u-group-elements {
         display: flex !important;
+        flex-direction: column !important;
         justify-content: center !important;
         align-items: center !important;
         margin: 0 auto !important;
+        position: relative !important;
       }
       
       .u-align-center {
@@ -64,8 +66,10 @@ technique, ​Forest wildlifeand hunting, ​Caring for forest to benefit nature
           height: 80px !important;
           margin: 0 auto !important;
           display: flex !important;
+          flex-direction: column !important;
           justify-content: center !important;
           align-items: center !important;
+          position: relative !important;
         }
         
         .u-shape-1 {
@@ -75,9 +79,12 @@ technique, ​Forest wildlifeand hunting, ​Caring for forest to benefit nature
         }
         
         .u-image-1 {
-          position: relative !important;
+          position: absolute !important;
+          top: 50% !important;
+          left: 50% !important;
+          transform: translate(-50%, -50%) !important;
           z-index: 2 !important;
-          margin: 0 auto !important;
+          margin: 0 !important;
         }
         
         .u-align-center .u-group-elements-1 {
