@@ -24,8 +24,8 @@ function consultarDatos() {
     // Cargar TODOS los datos RÁPIDO con requests paralelos
     const loadAllData = async () => {
       const allData = [];
-      const limit = 5000; // Chunks muy grandes
-      const maxParallel = 4; // Más requests simultáneos
+      const limit = 1000; // Chunks optimizados para 512MB
+      const maxParallel = 2; // Menos requests para ahorrar memoria
       let offset = 0;
       let totalLoaded = 0;
       let hasMoreData = true;
@@ -62,8 +62,13 @@ function consultarDatos() {
         // Si algún chunk vino vacío o incompleto, ya no hay más datos
         hasMoreData = chunks.every(chunk => chunk.length === limit);
         
-        // Pausa mínima
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // Pausa para liberar memoria
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Forzar limpieza de memoria cada 10 lotes
+        if (offset % 10000 === 0 && window.gc) {
+          window.gc();
+        }
       }
       
       console.log(`✅ Total cargado rápidamente: ${allData.length} registros`);
