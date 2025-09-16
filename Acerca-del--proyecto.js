@@ -22,11 +22,14 @@ function consultarDatos() {
         const info = await firstResponse.json();
         totalRecords = info.total || 10000;
         
-        // Calcular factor de salto basado en total de registros
-        if (totalRecords > 50000) skipFactor = 20;
-        else if (totalRecords > 20000) skipFactor = 10;
-        else if (totalRecords > 10000) skipFactor = 5;
-        else skipFactor = 2;
+        // Calcular factor de salto para millones de registros
+        if (totalRecords > 1000000) skipFactor = 500;      // 1M+ → cada 500
+        else if (totalRecords > 500000) skipFactor = 200;   // 500K+ → cada 200
+        else if (totalRecords > 100000) skipFactor = 100;   // 100K+ → cada 100
+        else if (totalRecords > 50000) skipFactor = 50;     // 50K+ → cada 50
+        else if (totalRecords > 20000) skipFactor = 20;     // 20K+ → cada 20
+        else if (totalRecords > 10000) skipFactor = 10;     // 10K+ → cada 10
+        else skipFactor = 5;                                // Menos → cada 5
         
         console.log(`📊 Total estimado: ${totalRecords}, Factor de salto: ${skipFactor}`);
       } catch (error) {
@@ -381,8 +384,56 @@ function processLines(lines, sensor1Data, sensor2Data, sensor3Data, inicio, fin)
 }
 
 function paginarPor(periodo) {
-  if (!datosConsultados || datosConsultados.length === 0) return;
+  if (!datosConsultados || datosConsultados.length === 0) {
+    // Si no hay datos consultados, cargar todos los datos sin saltos
+    $('#myPlot').html('<div style="text-align:center;padding:50px;">Cargando todos los datos para ' + periodo + '...</div>');
+    cargarTodosLosDatos().then(() => {
+      procesarPaginacion(periodo);
+    });
+    return;
+  }
   
+  procesarPaginacion(periodo);
+}
+
+// Función para cargar TODOS los datos sin saltos
+async function cargarTodosLosDatos() {
+  const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
+  const allData = [];
+  const limit = 1000;
+  let offset = 0;
+  
+  while (true) {
+    try {
+      const response = await fetch(`${SERVER_URL}/api/latest-data?limit=${limit}&offset=${offset}`);
+      if (!response.ok) break;
+      
+      const chunk = await response.json();
+      if (chunk.length === 0) break;
+      
+      // Agregar TODOS los datos sin saltos
+      chunk.forEach(record => {
+        allData.push({ x: record.fechaa, y: record.sensor1 });
+      });
+      
+      offset += chunk.length;
+      
+      // Mostrar progreso
+      $('#myPlot').html(`<div style="text-align:center;padding:50px;">Cargando datos completos...<br><strong>${allData.length.toLocaleString()}</strong> registros</div>`);
+      
+      if (chunk.length < limit) break;
+      
+    } catch (error) {
+      console.error('Error:', error);
+      break;
+    }
+  }
+  
+  datosConsultados = allData;
+  console.log(`✅ Datos completos cargados: ${allData.length}`);
+}
+
+function procesarPaginacion(periodo) {
   tipoPaginacion = periodo;
   paginaActual = 0;
   

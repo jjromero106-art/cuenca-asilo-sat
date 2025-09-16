@@ -247,9 +247,7 @@
                                                     <div class="text-center" style="margin-bottom: 15px; display: none;" id="paginacionControles">
                                                         <div style="margin-bottom: 15px;">
                                                             <label for="fechaEspecifica" style="display: block; margin-bottom: 5px; font-weight: bold;">📅 Ver día específico:</label>
-                                                            <select id="fechaEspecifica" class="form-control" style="width: 200px; margin: 0 auto 10px; display: inline-block;">
-                                                                <option value="">Seleccionar fecha...</option>
-                                                            </select>
+                                                            <input id="fechaEspecifica" class="date form-control" type="text" readonly placeholder="dd/mm/aaaa" style="width: 200px; margin: 0 auto 10px; display: inline-block;">
                                                             <button class="btn btn-sm btn-primary" onclick="consultarDiaEspecifico()" style="margin-left: 10px;">Ver Día</button>
                                                         </div>
                                                         <div style="margin-bottom: 15px;">
@@ -307,8 +305,8 @@
     </div>
 </footer>
         <script type="text/javascript">
-            // Función para llenar el select de fechas
-            async function llenarSelectFechas() {
+            // Función para configurar el rango de fechas del datepicker
+            async function configurarRangoFechas() {
                 try {
                     const response = await fetch('https://cuenca-asilo-backend.onrender.com/api/data-info');
                     const info = await response.json();
@@ -316,22 +314,35 @@
                     if (info.firstDate && info.lastDate) {
                         const inicio = new Date(info.firstDate);
                         const fin = new Date(info.lastDate);
-                        const select = $('#fechaEspecifica');
                         
-                        // Generar opciones de fechas
-                        for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 7)) { // Cada semana
-                            const fechaStr = d.toISOString().split('T')[0];
-                            const fechaDisplay = d.toLocaleDateString('es-ES');
-                            select.append(`<option value="${fechaStr}">${fechaDisplay}</option>`);
-                        }
+                        // Configurar datepicker con rango dinámico
+                        $('#fechaEspecifica').datepicker({
+                            format: 'dd/mm/yyyy',
+                            startDate: inicio,
+                            endDate: fin,
+                            language: 'es'
+                        });
+                    } else {
+                        // Fallback si no se puede obtener el rango
+                        $('#fechaEspecifica').datepicker({
+                            format: 'dd/mm/yyyy',
+                            startDate: new Date('2023-01-01'),
+                            endDate: new Date()
+                        });
                     }
                 } catch (error) {
-                    console.error('Error cargando fechas:', error);
+                    console.error('Error configurando fechas:', error);
+                    // Fallback
+                    $('#fechaEspecifica').datepicker({
+                        format: 'dd/mm/yyyy',
+                        startDate: new Date('2023-01-01'),
+                        endDate: new Date()
+                    });
                 }
             }
             
             $(document).ready(function () {
-                llenarSelectFechas();
+                configurarRangoFechas();
             });
         </script>
     </div>

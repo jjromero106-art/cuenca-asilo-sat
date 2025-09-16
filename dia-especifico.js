@@ -8,8 +8,10 @@ function consultarDiaEspecifico() {
   
   $('#myPlot').html('<div style="text-align:center;padding:50px;">Cargando día específico...</div>');
   
-  const inicio = new Date(fechaSeleccionada);
-  const fin = new Date(fechaSeleccionada);
+  // Convertir formato dd/mm/yyyy a Date
+  const fechaParts = fechaSeleccionada.split('/');
+  const inicio = new Date(fechaParts[2], fechaParts[1] - 1, fechaParts[0]);
+  const fin = new Date(fechaParts[2], fechaParts[1] - 1, fechaParts[0]);
   fin.setHours(23, 59, 59, 999);
   
   const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
