@@ -16,35 +16,47 @@ function consultarDiaEspecifico() {
   
   const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
   
-  // Cargar datos del día específico
-  loadDayData(inicio, fin).then(sensor1Data => {
-    if (sensor1Data.length === 0) {
-      $('#myPlot').html('<div style="text-align:center;padding:50px;">No hay datos para esta fecha</div>');
-      return;
-    }
+  // Usar búsqueda rápida optimizada
+  const fechaISO = inicio.toISOString().split('T')[0]; // YYYY-MM-DD
+  
+  fetch(`${SERVER_URL}/api/day-data?date=${fechaISO}`)
+    .then(response => {
+      if (!response.ok) throw new Error('Error en la API');
+      return response.json();
+    })
+    .then(dayRecords => {
+      const sensor1Data = dayRecords.map(record => ({
+        x: record.fechaa,
+        y: record.sensor1
+      }));
+      if (sensor1Data.length === 0) {
+        $('#myPlot').html('<div style="text-align:center;padding:50px;">No hay datos para esta fecha</div>');
+        return;
+      }
     
-    const traces = [{
-      x: sensor1Data.map(d => d.x),
-      y: sensor1Data.map(d => d.y),
-      type: 'scattergl',
-      mode: 'lines+markers',
-      marker: { size: 3 },
-      name: 'Sensor 1',
-      hovertemplate: '%{x|%d/%m/%Y, %I:%M:%S %p}<br>%{y} mm<extra></extra>'
-    }];
-    
-    Plotly.purge('myPlot');
-    Plotly.newPlot('myPlot', traces, {
-      title: `Datos del ${inicio.toLocaleDateString('es-ES')}`,
-      xaxis: { title: 'Hora' },
-      yaxis: { title: 'Nivel (mm)' },
-      autosize: true,
-      margin: { l: 50, r: 20, t: 50, b: 50 }
-    }, { responsive: true, displayModeBar: false });
-    
-  }).catch(error => {
-    $('#myPlot').html('<div style="text-align:center;padding:50px;color:red;">Error cargando datos</div>');
-  });
+      const traces = [{
+        x: sensor1Data.map(d => d.x),
+        y: sensor1Data.map(d => d.y),
+        type: 'scattergl',
+        mode: 'lines+markers',
+        marker: { size: 3 },
+        name: 'Sensor 1',
+        hovertemplate: '%{x|%d/%m/%Y, %I:%M:%S %p}<br>%{y} mm<extra></extra>'
+      }];
+      
+      Plotly.purge('myPlot');
+      Plotly.newPlot('myPlot', traces, {
+        title: `Datos del ${inicio.toLocaleDateString('es-ES')} (${sensor1Data.length} registros)`,
+        xaxis: { title: 'Hora' },
+        yaxis: { title: 'Nivel (mm)' },
+        autosize: true,
+        margin: { l: 50, r: 20, t: 50, b: 50 }
+      }, { responsive: true, displayModeBar: false });
+      
+    }).catch(error => {
+      console.error('Error:', error);
+      $('#myPlot').html('<div style="text-align:center;padding:50px;color:red;">Error cargando datos del día</div>');
+    });
 }
 
 // Función para cargar datos de un día específico
