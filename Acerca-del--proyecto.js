@@ -20,24 +20,44 @@ function consultarDatos() {
   const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
   
   setTimeout(() => {
-    fetch(`${SERVER_URL}/api/latest-data`)
-      .then(response => {
-        if (!response.ok) throw new Error('Error en la API');
-        return response.json();
-      })
-      .then(data => {
-        const sensor1Data = [];
-        const sensor2Data = [];
-        const sensor3Data = [];
+    // Cargar datos por chunks
+    const loadAllData = async () => {
+      const allData = [];
+      let offset = 0;
+      const limit = 1000;
+      
+      while (true) {
+        const response = await fetch(`${SERVER_URL}/api/latest-data?limit=${limit}&offset=${offset}`);
+        if (!response.ok) break;
+        const chunk = await response.json();
+        if (chunk.length === 0) break;
         
-        data.forEach(record => {
-          const fecha = new Date(record.fechaa);
-          if (fecha >= inicio && fecha <= fin) {
-            sensor1Data.push({ x: record.fechaa, y: record.sensor1 });
-            if (record.sensor2) sensor2Data.push({ x: record.fechaa, y: record.sensor2 });
-            if (record.sensor3) sensor3Data.push({ x: record.fechaa, y: record.sensor3 });
-          }
-        });
+        allData.push(...chunk);
+        offset += limit;
+        
+        // Mostrar progreso
+        $('#myPlot').html(`<div style="text-align:center;padding:50px;">Cargando... ${allData.length} registros</div>`);
+        
+        // Limitar para evitar sobrecarga
+        if (allData.length > 50000) break;
+      }
+      
+      return allData;
+    };
+    
+    loadAllData().then(data => {
+      const sensor1Data = [];
+      const sensor2Data = [];
+      const sensor3Data = [];
+      
+      data.forEach(record => {
+        const fecha = new Date(record.fechaa);
+        if (fecha >= inicio && fecha <= fin) {
+          sensor1Data.push({ x: record.fechaa, y: record.sensor1 });
+          if (record.sensor2) sensor2Data.push({ x: record.fechaa, y: record.sensor2 });
+          if (record.sensor3) sensor3Data.push({ x: record.fechaa, y: record.sensor3 });
+        }
+      });
         
         if (sensor1Data.length === 0) {
           $('#myPlot').html('<div style="text-align:center;padding:50px;">No hay datos</div>');
