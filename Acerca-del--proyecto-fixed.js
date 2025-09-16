@@ -192,9 +192,14 @@ function procesarPaginacion(periodo) {
   tipoPaginacion = periodo;
   paginaActual = 0;
   
-  // Para semanas, usar búsqueda rápida como días
+  // Para semanas y meses, usar búsqueda rápida
   if (periodo === 'semanas') {
     procesarSemanas();
+    return;
+  }
+  
+  if (periodo === 'meses') {
+    procesarMeses();
     return;
   }
   
@@ -277,10 +282,61 @@ async function procesarSemanas() {
   }
 }
 
+// Función optimizada para procesar meses
+async function procesarMeses() {
+  const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
+  
+  try {
+    const response = await fetch(`${SERVER_URL}/api/data-info`);
+    const info = await response.json();
+    
+    if (!info.firstDate || !info.lastDate) {
+      $('#myPlot').html('<div style="text-align:center;padding:50px;">No se pudo obtener rango de fechas</div>');
+      return;
+    }
+    
+    const primeraFecha = new Date(info.firstDate);
+    const ultimaFecha = new Date(info.lastDate);
+    
+    // Generar TODOS los meses pero sin datos
+    const meses = [];
+    let fechaActual = new Date(primeraFecha.getFullYear(), primeraFecha.getMonth(), 1);
+    
+    while (fechaActual <= ultimaFecha) {
+      const year = fechaActual.getFullYear();
+      const month = fechaActual.getMonth() + 1;
+      const monthStr = String(month).padStart(2, '0');
+      
+      meses.push({
+        year: year,
+        month: monthStr,
+        display: fechaActual.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' }),
+        loaded: false,
+        data: [],
+        count: 0
+      });
+      
+      fechaActual.setMonth(fechaActual.getMonth() + 1);
+    }
+    
+    datosPaginados = meses;
+    
+    // Cargar SOLO el primer mes
+    $('#myPlot').html('<div style="text-align:center;padding:50px;">Cargando primer mes...</div>');
+    await cargarMes(0);
+    
+    mostrarPaginaMes();
+    
+  } catch (error) {
+    console.error('Error procesando meses:', error);
+    $('#myPlot').html('<div style="text-align:center;padding:50px;color:red;">Error procesando meses</div>');
+  }
+}
+
 // Función para cargar una semana específica
 async function cargarSemana(indice) {
   if (!datosPaginados[indice] || datosPaginados[indice].loaded) {
-    return; // Ya está cargada
+    return;
   }
   
   const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
@@ -295,7 +351,6 @@ async function cargarSemana(indice) {
         y: record.sensor1
       }));
       
-      // Actualizar los datos de la semana
       datosPaginados[indice].data = formattedData;
       datosPaginados[indice].count = formattedData.length;
       datosPaginados[indice].loaded = true;
@@ -307,9 +362,43 @@ async function cargarSemana(indice) {
   }
 }
 
+// Función para cargar un mes específico
+async function cargarMes(indice) {
+  if (!datosPaginados[indice] || datosPaginados[indice].loaded) {
+    return;
+  }
+  
+  const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
+  const mes = datosPaginados[indice];
+  
+  try {
+    const response = await fetch(`${SERVER_URL}/api/month-data?year=${mes.year}&month=${mes.month}`);
+    if (response.ok) {
+      const monthData = await response.json();
+      const formattedData = monthData.map(record => ({
+        x: record.fechaa,
+        y: record.sensor1
+      }));
+      
+      datosPaginados[indice].data = formattedData;
+      datosPaginados[indice].count = formattedData.length;
+      datosPaginados[indice].loaded = true;
+      
+      console.log(`Mes ${indice + 1} cargado: ${formattedData.length} registros (resolución reducida)`);
+    }
+  } catch (error) {
+    console.error(`Error cargando mes ${indice}:`, error);
+  }
+}
+
 function mostrarPagina() {
   if (tipoPaginacion === 'semanas') {
     mostrarPaginaSemana();
+    return;
+  }
+  
+  if (tipoPaginacion === 'meses') {
+    mostrarPaginaMes();
     return;
   }
   
@@ -372,6 +461,42 @@ async function mostrarPaginaSemana() {
   }, { responsive: true, displayModeBar: false });
   
   $('#paginaInfo').text(`${semanaActual.display} (${paginaActual + 1}/${datosPaginados.length})`);
+  
+  $('button[onclick="anteriorPagina()"]').prop('disabled', paginaActual === 0);
+  $('button[onclick="siguientePagina()"]').prop('disabled', paginaActual >= datosPaginados.length - 1);
+}
+
+async function mostrarPaginaMes() {
+  if (!datosPaginados || datosPaginados.length === 0) return;
+  
+  const mesActual = datosPaginados[paginaActual];
+  if (!mesActual) return;
+  
+  // Si el mes no está cargado, cargarlo
+  if (!mesActual.loaded) {
+    $('#myPlot').html(`<div style="text-align:center;padding:50px;">Cargando ${mesActual.display}...</div>`);
+    await cargarMes(paginaActual);
+  }
+  
+  Plotly.purge('myPlot');
+  
+  Plotly.newPlot('myPlot', [{
+    x: mesActual.data.map(d => d.x),
+    y: mesActual.data.map(d => d.y),
+    type: 'scattergl',
+    mode: 'lines+markers',
+    marker: { size: 2 },
+    name: 'Sensor 1',
+    hovertemplate: '%{x|%d/%m/%Y, %I:%M:%S %p}<br>%{y} mm<extra></extra>'
+  }], {
+    title: `${mesActual.display} (${mesActual.count} registros - resolución reducida)`,
+    xaxis: { title: 'Fecha' },
+    yaxis: { title: 'Valores (mm)' },
+    autosize: true,
+    margin: { l: 50, r: 20, t: 50, b: 50 }
+  }, { responsive: true, displayModeBar: false });
+  
+  $('#paginaInfo').text(`${mesActual.display} (${paginaActual + 1}/${datosPaginados.length})`);
   
   $('button[onclick="anteriorPagina()"]').prop('disabled', paginaActual === 0);
   $('button[onclick="siguientePagina()"]').prop('disabled', paginaActual >= datosPaginados.length - 1);
