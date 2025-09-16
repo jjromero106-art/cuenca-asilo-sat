@@ -437,6 +437,12 @@ function procesarPaginacion(periodo) {
   tipoPaginacion = periodo;
   paginaActual = 0;
   
+  // Para semanas, usar búsqueda rápida
+  if (periodo === 'semanas') {
+    procesarSemanas();
+    return;
+  }
+  
   // Liberar memoria anterior
   datosPaginados = null;
   
@@ -488,13 +494,82 @@ function procesarPaginacion(periodo) {
   processChunk();
 }
 
+// Función optimizada para procesar semanas
+async function procesarSemanas() {
+  const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
+  
+  if (!datosConsultados || datosConsultados.length === 0) {
+    $('#myPlot').html('<div style="text-align:center;padding:50px;">No hay datos para procesar</div>');
+    return;
+  }
+  
+  // Obtener rango de fechas de los datos
+  const fechas = datosConsultados.map(d => new Date(d.x)).sort((a, b) => a - b);
+  const primeraFecha = fechas[0];
+  const ultimaFecha = fechas[fechas.length - 1];
+  
+  // Generar semanas
+  const semanas = [];
+  let inicioSemana = new Date(primeraFecha);
+  inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay()); // Lunes
+  
+  while (inicioSemana <= ultimaFecha) {
+    const finSemana = new Date(inicioSemana);
+    finSemana.setDate(inicioSemana.getDate() + 6); // Domingo
+    
+    semanas.push({
+      inicio: inicioSemana.toISOString().split('T')[0],
+      fin: finSemana.toISOString().split('T')[0],
+      display: `Semana del ${inicioSemana.getDate()} al ${finSemana.getDate()} de ${finSemana.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`
+    });
+    
+    inicioSemana = new Date(finSemana);
+    inicioSemana.setDate(finSemana.getDate() + 1);
+  }
+  
+  // Cargar datos de cada semana usando API rápida
+  datosPaginados = [];
+  
+  for (let i = 0; i < semanas.length; i++) {
+    const semana = semanas[i];
+    
+    try {
+      const response = await fetch(`${SERVER_URL}/api/week-data?startDate=${semana.inicio}&endDate=${semana.fin}`);
+      if (response.ok) {
+        const weekData = await response.json();
+        const formattedData = weekData.map(record => ({
+          x: record.fechaa,
+          y: record.sensor1
+        }));
+        
+        datosPaginados.push({
+          data: formattedData,
+          title: semana.display,
+          count: formattedData.length
+        });
+      }
+    } catch (error) {
+      console.error('Error cargando semana:', error);
+    }
+    
+    // Mostrar progreso
+    $('#myPlot').html(`<div style="text-align:center;padding:50px;">Procesando semanas...<br>${i + 1} de ${semanas.length}</div>`);
+  }
+  
+  mostrarPaginaSemana();
+}
+
 function mostrarPagina() {
+  if (tipoPaginacion === 'semanas') {
+    mostrarPaginaSemana();
+    return;
+  }
+  
   if (!datosPaginados || datosPaginados.length === 0) return;
   
   const datosActuales = datosPaginados[paginaActual] || [];
   
   $('#myPlot').empty();
-  // Limpiar gráfica anterior para liberar memoria
   Plotly.purge('myPlot');
   
   Plotly.newPlot('myPlot', [{
@@ -507,6 +582,31 @@ function mostrarPagina() {
     hovertemplate: '%{x|%d/%m/%Y, %I:%M:%S %p}<br>%{y} mm<extra></extra>'
   }], {
     title: `${tipoPaginacion.charAt(0).toUpperCase() + tipoPaginacion.slice(1)} - Página ${paginaActual + 1}`,
+    xaxis: { title: 'Fecha' },
+    yaxis: { title: 'Valores (mm)' },
+    autosize: true,
+    margin: { l: 50, r: 20, t: 50, b: 50 }
+  }, { responsive: true, displayModeBar: false });
+
+function mostrarPaginaSemana() {
+  if (!datosPaginados || datosPaginados.length === 0) return;
+  
+  const semanaActual = datosPaginados[paginaActual];
+  if (!semanaActual) return;
+  
+  $('#myPlot').empty();
+  Plotly.purge('myPlot');
+  
+  Plotly.newPlot('myPlot', [{
+    x: semanaActual.data.map(d => d.x),
+    y: semanaActual.data.map(d => d.y),
+    type: 'scattergl',
+    mode: 'lines+markers',
+    marker: { size: 2 },
+    name: 'Sensor 1',
+    hovertemplate: '%{x|%d/%m/%Y, %I:%M:%S %p}<br>%{y} mm<extra></extra>'
+  }], {
+    title: `${semanaActual.title} (${semanaActual.count} registros)`,
     xaxis: { title: 'Fecha' },
     yaxis: { title: 'Valores (mm)' },
     autosize: true,
