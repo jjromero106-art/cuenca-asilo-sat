@@ -20,28 +20,52 @@ function consultarDatos() {
   const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
   
   setTimeout(() => {
-    // Cargar datos por chunks
+    // Cargar TODOS los datos por chunks
     const loadAllData = async () => {
       const allData = [];
       let offset = 0;
-      const limit = 1000;
+      const limit = 500; // Chunks más pequeños
+      let totalLoaded = 0;
       
       while (true) {
-        const response = await fetch(`${SERVER_URL}/api/latest-data?limit=${limit}&offset=${offset}`);
-        if (!response.ok) break;
-        const chunk = await response.json();
-        if (chunk.length === 0) break;
-        
-        allData.push(...chunk);
-        offset += limit;
-        
-        // Mostrar progreso
-        $('#myPlot').html(`<div style="text-align:center;padding:50px;">Cargando... ${allData.length} registros</div>`);
-        
-        // Limitar para evitar sobrecarga
-        if (allData.length > 50000) break;
+        try {
+          const response = await fetch(`${SERVER_URL}/api/latest-data?limit=${limit}&offset=${offset}`);
+          if (!response.ok) {
+            console.log('Error en respuesta:', response.status);
+            break;
+          }
+          
+          const chunk = await response.json();
+          console.log(`Chunk cargado: ${chunk.length} registros, offset: ${offset}`);
+          
+          if (chunk.length === 0) {
+            console.log('No más datos disponibles');
+            break;
+          }
+          
+          allData.push(...chunk);
+          totalLoaded += chunk.length;
+          offset += chunk.length; // Usar la cantidad real cargada
+          
+          // Mostrar progreso
+          $('#myPlot').html(`<div style="text-align:center;padding:50px;">📊 Cargando datos...<br><strong>${totalLoaded.toLocaleString()}</strong> registros cargados</div>`);
+          
+          // Pausa pequeña para no sobrecargar
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Si el chunk es menor al límite, ya no hay más datos
+          if (chunk.length < limit) {
+            console.log('Último chunk cargado');
+            break;
+          }
+          
+        } catch (error) {
+          console.error('Error cargando chunk:', error);
+          break;
+        }
       }
       
+      console.log(`Total de registros cargados: ${allData.length}`);
       return allData;
     };
     
