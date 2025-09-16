@@ -17,7 +17,7 @@ function consultarDatos() {
   datosPaginados = null;
   $('#paginacionControles').hide();
   
-  const SERVER_URL = 'http://localhost:3000'; // Cambiar por tu URL del hosting
+  const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
   
   setTimeout(() => {
     fetch(`${SERVER_URL}/api/latest-data`)
@@ -231,7 +231,7 @@ function consultarDatosOriginal() {
 }
 
 function actualizarDatosEnTiempoReal() {
-  const SERVER_URL = 'http://localhost:3000'; // Cambiar por tu URL del hosting
+  const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
   
   fetch(`${SERVER_URL}/api/last-record`)
     .then(response => {
@@ -265,7 +265,7 @@ function consultasMultiples() {
     { inicio: '01/03/2024', fin: '31/03/2024', sensor: 'sensor1' }
   ];
   
-  const SERVER_URL = 'http://localhost:3000';
+  const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
   const resultados = [];
   
   consultas.forEach((consulta, index) => {
