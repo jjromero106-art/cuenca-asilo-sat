@@ -20,52 +20,52 @@ function consultarDatos() {
   const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
   
   setTimeout(() => {
-    // Cargar TODOS los datos por chunks
+    // Cargar TODOS los datos RÁPIDO con requests paralelos
     const loadAllData = async () => {
       const allData = [];
+      const limit = 2000; // Chunks más grandes
+      const maxParallel = 3; // Máximo 3 requests simultáneos
       let offset = 0;
-      const limit = 500; // Chunks más pequeños
       let totalLoaded = 0;
+      let hasMoreData = true;
       
-      while (true) {
-        try {
-          const response = await fetch(`${SERVER_URL}/api/latest-data?limit=${limit}&offset=${offset}`);
-          if (!response.ok) {
-            console.log('Error en respuesta:', response.status);
-            break;
-          }
-          
-          const chunk = await response.json();
-          console.log(`Chunk cargado: ${chunk.length} registros, offset: ${offset}`);
-          
-          if (chunk.length === 0) {
-            console.log('No más datos disponibles');
-            break;
-          }
-          
-          allData.push(...chunk);
-          totalLoaded += chunk.length;
-          offset += chunk.length; // Usar la cantidad real cargada
-          
-          // Mostrar progreso
-          $('#myPlot').html(`<div style="text-align:center;padding:50px;">📊 Cargando datos...<br><strong>${totalLoaded.toLocaleString()}</strong> registros cargados</div>`);
-          
-          // Pausa pequeña para no sobrecargar
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-          // Si el chunk es menor al límite, ya no hay más datos
-          if (chunk.length < limit) {
-            console.log('Último chunk cargado');
-            break;
-          }
-          
-        } catch (error) {
-          console.error('Error cargando chunk:', error);
-          break;
+      while (hasMoreData) {
+        // Crear múltiples requests paralelos
+        const promises = [];
+        for (let i = 0; i < maxParallel && hasMoreData; i++) {
+          const currentOffset = offset + (i * limit);
+          promises.push(
+            fetch(`${SERVER_URL}/api/latest-data?limit=${limit}&offset=${currentOffset}`)
+              .then(response => response.ok ? response.json() : [])
+              .catch(() => [])
+          );
         }
+        
+        // Esperar todos los requests paralelos
+        const chunks = await Promise.all(promises);
+        
+        let loadedInThisBatch = 0;
+        chunks.forEach(chunk => {
+          if (chunk.length > 0) {
+            allData.push(...chunk);
+            loadedInThisBatch += chunk.length;
+          }
+        });
+        
+        totalLoaded += loadedInThisBatch;
+        offset += maxParallel * limit;
+        
+        // Mostrar progreso
+        $('#myPlot').html(`<div style="text-align:center;padding:50px;">🚀 Carga rápida...<br><strong>${totalLoaded.toLocaleString()}</strong> registros<br><small>Cargando ${maxParallel} chunks simultáneos</small></div>`);
+        
+        // Si algún chunk vino vacío o incompleto, ya no hay más datos
+        hasMoreData = chunks.every(chunk => chunk.length === limit);
+        
+        // Pausa mínima
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
       
-      console.log(`Total de registros cargados: ${allData.length}`);
+      console.log(`✅ Total cargado rápidamente: ${allData.length} registros`);
       return allData;
     };
     
