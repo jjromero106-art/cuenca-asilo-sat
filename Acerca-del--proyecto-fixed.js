@@ -224,11 +224,10 @@ function procesarPaginacion(periodo) {
   mostrarPagina();
 }
 
-// Función optimizada para procesar semanas (como días)
+// Función optimizada para procesar semanas (carga bajo demanda)
 async function procesarSemanas() {
   const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
   
-  // Obtener rango de fechas disponibles
   try {
     const response = await fetch(`${SERVER_URL}/api/data-info`);
     const info = await response.json();
@@ -241,59 +240,70 @@ async function procesarSemanas() {
     const primeraFecha = new Date(info.firstDate);
     const ultimaFecha = new Date(info.lastDate);
     
-    // Generar semanas
+    // Generar TODAS las semanas pero sin datos
     const semanas = [];
     let inicioSemana = new Date(primeraFecha);
-    inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay()); // Lunes
+    inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay());
     
     while (inicioSemana <= ultimaFecha) {
       const finSemana = new Date(inicioSemana);
-      finSemana.setDate(inicioSemana.getDate() + 6); // Domingo
+      finSemana.setDate(inicioSemana.getDate() + 6);
       
       semanas.push({
         inicio: inicioSemana.toISOString().split('T')[0],
         fin: finSemana.toISOString().split('T')[0],
-        display: `Semana del ${inicioSemana.getDate()} al ${finSemana.getDate()} de ${finSemana.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`
+        display: `Semana del ${inicioSemana.getDate()} al ${finSemana.getDate()} de ${finSemana.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`,
+        loaded: false, // Marcar como no cargada
+        data: [],
+        count: 0
       });
       
       inicioSemana = new Date(finSemana);
       inicioSemana.setDate(finSemana.getDate() + 1);
     }
     
-    // Cargar datos de cada semana usando API rápida
-    datosPaginados = [];
+    // Inicializar datosPaginados con estructura vacía
+    datosPaginados = semanas;
     
-    for (let i = 0; i < semanas.length; i++) {
-      const semana = semanas[i];
-      
-      try {
-        const response = await fetch(`${SERVER_URL}/api/week-data?startDate=${semana.inicio}&endDate=${semana.fin}`);
-        if (response.ok) {
-          const weekData = await response.json();
-          const formattedData = weekData.map(record => ({
-            x: record.fechaa,
-            y: record.sensor1
-          }));
-          
-          datosPaginados.push({
-            data: formattedData,
-            title: semana.display,
-            count: formattedData.length
-          });
-        }
-      } catch (error) {
-        console.error('Error cargando semana:', error);
-      }
-      
-      // Mostrar progreso
-      $('#myPlot').html(`<div style="text-align:center;padding:50px;">Procesando semanas...<br>${i + 1} de ${semanas.length}</div>`);
-    }
+    // Cargar SOLO la primera semana
+    $('#myPlot').html('<div style="text-align:center;padding:50px;">Cargando primera semana...</div>');
+    await cargarSemana(0);
     
     mostrarPaginaSemana();
     
   } catch (error) {
     console.error('Error procesando semanas:', error);
     $('#myPlot').html('<div style="text-align:center;padding:50px;color:red;">Error procesando semanas</div>');
+  }
+}
+
+// Función para cargar una semana específica
+async function cargarSemana(indice) {
+  if (!datosPaginados[indice] || datosPaginados[indice].loaded) {
+    return; // Ya está cargada
+  }
+  
+  const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
+  const semana = datosPaginados[indice];
+  
+  try {
+    const response = await fetch(`${SERVER_URL}/api/week-data?startDate=${semana.inicio}&endDate=${semana.fin}`);
+    if (response.ok) {
+      const weekData = await response.json();
+      const formattedData = weekData.map(record => ({
+        x: record.fechaa,
+        y: record.sensor1
+      }));
+      
+      // Actualizar los datos de la semana
+      datosPaginados[indice].data = formattedData;
+      datosPaginados[indice].count = formattedData.length;
+      datosPaginados[indice].loaded = true;
+      
+      console.log(`Semana ${indice + 1} cargada: ${formattedData.length} registros`);
+    }
+  } catch (error) {
+    console.error(`Error cargando semana ${indice}:`, error);
   }
 }
 
@@ -331,11 +341,17 @@ function mostrarPagina() {
   $('button[onclick="siguientePagina()"]').prop('disabled', paginaActual >= datosPaginados.length - 1);
 }
 
-function mostrarPaginaSemana() {
+async function mostrarPaginaSemana() {
   if (!datosPaginados || datosPaginados.length === 0) return;
   
   const semanaActual = datosPaginados[paginaActual];
   if (!semanaActual) return;
+  
+  // Si la semana no está cargada, cargarla
+  if (!semanaActual.loaded) {
+    $('#myPlot').html(`<div style="text-align:center;padding:50px;">Cargando ${semanaActual.display}...</div>`);
+    await cargarSemana(paginaActual);
+  }
   
   Plotly.purge('myPlot');
   
@@ -348,14 +364,14 @@ function mostrarPaginaSemana() {
     name: 'Sensor 1',
     hovertemplate: '%{x|%d/%m/%Y, %I:%M:%S %p}<br>%{y} mm<extra></extra>'
   }], {
-    title: `${semanaActual.title} (${semanaActual.count} registros)`,
+    title: `${semanaActual.display} (${semanaActual.count} registros)`,
     xaxis: { title: 'Fecha' },
     yaxis: { title: 'Valores (mm)' },
     autosize: true,
     margin: { l: 50, r: 20, t: 50, b: 50 }
   }, { responsive: true, displayModeBar: false });
   
-  $('#paginaInfo').text(`${semanaActual.title} (${paginaActual + 1}/${datosPaginados.length})`);
+  $('#paginaInfo').text(`${semanaActual.display} (${paginaActual + 1}/${datosPaginados.length})`);
   
   $('button[onclick="anteriorPagina()"]').prop('disabled', paginaActual === 0);
   $('button[onclick="siguientePagina()"]').prop('disabled', paginaActual >= datosPaginados.length - 1);
