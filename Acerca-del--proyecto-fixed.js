@@ -118,13 +118,23 @@ async function loadSampledData(SERVER_URL) {
 function actualizarDatosEnTiempoReal() {
   const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
   
-  fetch(`${SERVER_URL}/api/last-record`)
+  fetch(`${SERVER_URL}/api/last-record`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
     .then(response => {
-      if (!response.ok) throw new Error('Error en la API');
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
       return response.json();
     })
     .then(ultimoDato => {
-      if (!ultimoDato) return;
+      if (!ultimoDato) {
+        console.warn('No se recibieron datos del servidor');
+        return;
+      }
       
       const fecha = new Date(ultimoDato.fechaa);
       const fechaStr = fecha.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -137,10 +147,18 @@ function actualizarDatosEnTiempoReal() {
       console.log('Datos actualizados:', ultimoDato.sensor1 + ' mm');
     })
     .catch(error => {
-      console.error('Error actualizando datos:', error);
-      $('#NivelAguaUltrasonico').text('Error');
-      $('#datestring').text('Error cargando');
-      $('#timestring').text('Error');
+      console.error('Error actualizando datos:', error.message);
+      
+      // Mostrar estado de conexión
+      if (error.message.includes('502') || error.message.includes('Failed to fetch')) {
+        $('#NivelAguaUltrasonico').text('Servidor iniciando...');
+        $('#datestring').text('Conectando al servidor');
+        $('#timestring').text('Espere un momento');
+      } else {
+        $('#NivelAguaUltrasonico').text('Error de conexión');
+        $('#datestring').text('Verifique su conexión');
+        $('#timestring').text('Reintentando...');
+      }
     });
 }
 
