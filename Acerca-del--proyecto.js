@@ -7,6 +7,8 @@ function consultarDatos() {
   
   const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
   
+  const SERVER_URL = 'https://cuenca-asilo-backend.onrender.com';
+  
   setTimeout(() => {
     // Cargar datos con SALTOS para optimizar memoria
     const loadSampledData = async () => {
@@ -140,8 +142,9 @@ function consultarDatos() {
           Plotly.Plots.resize('myPlot');
         });
       })
-      .catch(() => {
-        $('#myPlot').html('<div style="text-align:center;padding:50px;color:red;">Error</div>');
+      .catch((error) => {
+        console.error('Error en consultarDatos:', error);
+        $('#myPlot').html('<div style="text-align:center;padding:50px;color:red;">Error cargando datos</div>');
       });
   }, 100);
 }
@@ -694,6 +697,10 @@ function siguientePagina() {
 // Iniciar actualización automática cuando carga la página
 $(document).ready(function() {
   $('#myPlot').empty(); // Limpiar contenedor de gráfica
+  
+  // Iniciar actualización de tabla en tiempo real
   actualizarDatosEnTiempoReal();
   setInterval(actualizarDatosEnTiempoReal, 5000); // Actualizar cada 5 segundos
+  
+  console.log('Página cargada - Iniciando actualización en tiempo real');
 });
